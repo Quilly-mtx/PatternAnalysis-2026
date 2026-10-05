@@ -1,0 +1,25 @@
+# Datasets and caches
+data/
+hf_cache/
+*.arrow
+*.parquet
+
+# Model weights and checkpoints
+checkpoints/
+outputs/
+*.pt
+*.pth
+*.bin
+*.ckpt
+*.safetensors
+
+# Run artefacts
+slurm-*.out
+wandb/
+runs/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
