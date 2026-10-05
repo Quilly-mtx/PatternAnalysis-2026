@@ -97,17 +97,21 @@ def count_parameters(model):
     return total, trainable
 
 
-def build_model(name="google/flan-t5-base", mode="lora", r=8, alpha=16, dropout=0.05):
+def build_model(name="google/flan-t5-base", mode="lora", r=8, alpha=16, dropout=0.05, return_attention=False):
     """
     Load a pretrained FLAN-T5 and prepare it for one of three settings:
       "zero_shot" - all weights frozen, used as the untuned baseline
       "lora"      - backbone frozen, LoRA adapters on attention q and v
       "full"      - every weight trainable
+
+    return_attention switches to the slower attention implementation that can
+    hand back its weights; it is only needed to plot attention maps.
     """
     # Imported here so the LoRA components above depend on PyTorch only.
     from transformers import AutoModelForSeq2SeqLM
 
-    model = AutoModelForSeq2SeqLM.from_pretrained(name)
+    options = {"attn_implementation": "eager"} if return_attention else {}
+    model = AutoModelForSeq2SeqLM.from_pretrained(name, **options)
     if mode == "lora":
         inject_lora(model, r=r, alpha=alpha, dropout=dropout)
     elif mode == "zero_shot":
