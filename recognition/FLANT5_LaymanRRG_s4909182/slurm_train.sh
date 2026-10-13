@@ -13,6 +13,9 @@
 #   sbatch --job-name=lora_r8_s0 slurm_train.sh lora runs/lora_r8_s0 --rank 8 --seed 0
 #   sbatch --job-name=full_s0    slurm_train.sh full runs/full_s0 --seed 0
 #
+# Add --split controlled for the de-duplicated split with a held-out dev set
+# (the default is the official train split as released).
+#
 # The first two arguments are the mode and the output folder; anything after
 # them is passed straight to train.py. A shorter --time helps the scheduler
 # fit the job into gaps, so lower it once the real run time is known.

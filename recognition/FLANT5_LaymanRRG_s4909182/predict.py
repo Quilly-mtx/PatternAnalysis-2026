@@ -34,6 +34,8 @@ def parse_args():
     parser.add_argument("--rank", type=int, default=8, help="must match the LoRA checkpoint")
     parser.add_argument("--alpha", type=float, default=16, help="must match the LoRA checkpoint")
     parser.add_argument("--data_dir", default=None, help="folder with train.parquet and validation.parquet")
+    parser.add_argument("--split", default="official", choices=["official", "controlled"],
+                        help="the split the checkpoint was trained on (decides which test reports count as seen)")
     parser.add_argument("--text", default=None, help="summarise this report instead of sampling test reports")
     parser.add_argument("--num_examples", type=int, default=5)
     parser.add_argument("--subset", default="unseen", choices=["all", "seen", "unseen"],
@@ -123,7 +125,7 @@ def main():
     if args.text:
         reports, references, tags = [args.text], [None], ["custom input"]
     else:
-        test = make_splits(args.data_dir)["test"]
+        test = make_splits(args.data_dir, args.split)["test"]
         if args.subset != "all":
             test = test[test["seen_in_train"] == (args.subset == "seen")]
         sample = test.sample(min(args.num_examples, len(test)), random_state=args.seed)

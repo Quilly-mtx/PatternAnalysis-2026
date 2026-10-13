@@ -7,8 +7,12 @@ Examples:
     python train.py --mode full      --data_dir data --out_dir runs/full
 
 Every run ends by scoring the held-out test split and writing predictions,
-metrics, curves and resource usage to --out_dir. The checkpoint that is tested
-is the one with the best ROUGE-Lsum on the dev split.
+metrics, curves and resource usage to --out_dir.
+
+--split official (default) trains on the official train split as released and
+tests the final checkpoint, because that split has no held-out dev set.
+--split controlled trains on the de-duplicated split and tests the checkpoint
+with the best ROUGE-Lsum on its dev split.
 """
 import argparse
 import json
@@ -33,6 +37,8 @@ def parse_args():
     parser.add_argument("--mode", required=True, choices=["zero_shot", "lora", "full"])
     parser.add_argument("--out_dir", required=True)
     parser.add_argument("--data_dir", default=None, help="folder with train.parquet and validation.parquet")
+    parser.add_argument("--split", default="official", choices=["official", "controlled"],
+                        help="official train as released, or the de-duplicated split with a held-out dev set")
     parser.add_argument("--model", default="google/flan-t5-base")
     parser.add_argument("--epochs", type=int, default=2)
     parser.add_argument("--max_steps", type=int, default=0, help="stop after this many steps (0 = use --epochs)")
@@ -83,7 +89,14 @@ def evaluate_dev(model, tokenizer, dev_loader, dev_sample, args, device):
 
 
 def train(model, tokenizer, train_frame, dev_frame, args, device, checkpoint_path):
-    """Optimise the trainable parameters and keep the checkpoint with the best dev ROUGE-Lsum."""
+    """
+    Optimise the trainable parameters and save one checkpoint.
+
+    With the controlled split the saved checkpoint is the one with the best dev
+    ROUGE-Lsum. With the official split dev rows are part of train, so they
+    cannot be used for selection and the final checkpoint is saved instead.
+    """
+    keep_final = args.split == "official"
     generator = torch.Generator().manual_seed(args.seed)
     train_loader = make_loader(train_frame, tokenizer, args.batch_size, shuffle=True, generator=generator)
     dev_loader = make_loader(dev_frame, tokenizer, args.eval_batch_size)
@@ -138,8 +151,12 @@ def train(model, tokenizer, train_frame, dev_frame, args, device, checkpoint_pat
                 since_eval = []
                 history.append(record)
                 print("dev  " + "  ".join(f"{k} {v:.4f}" for k, v in record.items() if k != "step"), flush=True)
-                if record["rougeLsum"] > best:
-                    best = record["rougeLsum"]
+                improved = record["rougeLsum"] > best
+                best = max(best, record["rougeLsum"])
+                if keep_final and step == total_steps:
+                    save_checkpoint(model, args.mode, checkpoint_path)
+                    print(f"saved final checkpoint (step {step})", flush=True)
+                elif improved and not keep_final:
                     save_checkpoint(model, args.mode, checkpoint_path)
                     print(f"saved best checkpoint (dev rougeLsum {best:.2f})", flush=True)
                 with open(os.path.join(out_dir, "history.json"), "w") as f:
@@ -211,7 +228,7 @@ def main():
     set_seed(args.seed)
     device = torch.device(args.device) if args.device else pick_device()
 
-    splits = make_splits(args.data_dir)
+    splits = make_splits(args.data_dir, args.split)
     train_frame, dev_frame, test_frame = splits["train"], splits["dev"], splits["test"]
     if args.max_train_samples:
         train_frame = train_frame.sample(args.max_train_samples, random_state=args.seed)
@@ -223,7 +240,7 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     model = build_model(args.model, args.mode, r=args.rank, alpha=args.alpha, dropout=args.dropout).to(device)
     total, trainable = count_parameters(model)
-    print(f"device {device}  mode {args.mode}  parameters {total:,}  trainable {trainable:,} "
+    print(f"device {device}  mode {args.mode}  split {args.split}  parameters {total:,}  trainable {trainable:,} "
           f"({100 * trainable / total:.3f}%)  train {len(train_frame):,}  dev {len(dev_frame):,}  "
           f"test {len(test_frame):,}", flush=True)
 

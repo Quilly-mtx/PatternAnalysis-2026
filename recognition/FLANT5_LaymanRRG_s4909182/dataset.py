@@ -1,9 +1,10 @@
 """
-Data loading, tokenisation and leakage-free splitting for BioLaySumm LaymanRRG.
+Data loading, tokenisation and splitting for BioLaySumm LaymanRRG.
 
 The official test split has no reference summaries, so the official validation
-split is used as the held-out test set and a dev split is carved out of train
-for model selection.
+split is always the held-out test set. Two ways of preparing the training data
+are provided: the official train split exactly as released, and a
+leakage-controlled variant with duplicates removed and a dev split carved out.
 """
 import hashlib
 import re
@@ -47,35 +48,48 @@ def load_raw(data_dir=None):
     return {s: pd.read_parquet(p) for s, p in paths.items()}
 
 
-def make_splits(data_dir=None, dev_fraction=0.02):
+def make_splits(data_dir=None, split="official", dev_fraction=0.02, monitor_rows=2000):
     """
-    Build train / dev / test DataFrames without leakage between them.
+    Build train / dev / test DataFrames.
 
-    1. test  = official validation split, untouched. A boolean column
-       `seen_in_train` marks rows whose report text also occurs in the final
-       train split, so metrics can be reported on seen and unseen inputs.
-    2. Train rows that share an `images_path` (same imaging study) with the
-       test split are removed.
-    3. Train is de-duplicated on (report, summary) pairs.
-    4. dev is split off train by hashing the normalised report text, so every
-       copy of a report lands on the same side and dev inputs are never seen
-       during training.
+    In both modes test is the official validation split, untouched, with a
+    boolean column `seen_in_train` marking rows whose report text also occurs
+    in the train split that was actually used, so metrics can be reported on
+    seen and unseen reports.
+
+    split="official": train is the official train split exactly as released.
+        There is no held-out dev set; `dev` is a fixed random sample of train
+        rows, useful only for drawing training curves.
+
+    split="controlled": a stricter variant for studying leakage.
+        1. Train rows that share an `images_path` (same imaging study) with
+           the test split are removed.
+        2. Train is de-duplicated on (report, summary) pairs.
+        3. dev is split off train by hashing the normalised report text, so
+           every copy of a report lands on the same side and dev reports are
+           never seen during training. A side effect is that a frequent
+           template sentence can leave the train split entirely.
     """
+    if split not in ("official", "controlled"):
+        raise ValueError(f"unknown split: {split}")
     raw = load_raw(data_dir)
     train, test = raw["train"].copy(), raw["validation"].copy()
     for df in (train, test):
         df["source_key"] = df[SOURCE_COL].map(normalise)
 
-    # Same imaging study must not sit on both sides of the train / test boundary.
-    train = train[~train["images_path"].isin(set(test["images_path"]))]
+    if split == "official":
+        dev = train.sample(min(monitor_rows, len(train)), random_state=0)
+    else:
+        # Same imaging study must not sit on both sides of the train / test boundary.
+        train = train[~train["images_path"].isin(set(test["images_path"]))]
 
-    # Exact repeats of a (report, summary) pair add no information.
-    train = train.assign(target_key=train[TARGET_COL].map(normalise))
-    train = train.drop_duplicates(["source_key", "target_key"]).drop(columns="target_key")
+        # Exact repeats of a (report, summary) pair add no information.
+        train = train.assign(target_key=train[TARGET_COL].map(normalise))
+        train = train.drop_duplicates(["source_key", "target_key"]).drop(columns="target_key")
 
-    # Group-wise dev split: the bucket depends only on the report text.
-    in_dev = train["source_key"].map(_bucket) < int(dev_fraction * 1000)
-    dev, train = train[in_dev], train[~in_dev]
+        # Group-wise dev split: the bucket depends only on the report text.
+        in_dev = train["source_key"].map(_bucket) < int(dev_fraction * 1000)
+        dev, train = train[in_dev], train[~in_dev]
 
     test["seen_in_train"] = test["source_key"].isin(set(train["source_key"]))
 
@@ -154,7 +168,8 @@ def make_loader(frame, tokenizer, batch_size, shuffle=False, generator=None):
 if __name__ == "__main__":
     import sys
 
-    splits = make_splits(sys.argv[1] if len(sys.argv) > 1 else None)
+    # usage: python dataset.py [data_dir] [official|controlled]
+    splits = make_splits(sys.argv[1] if len(sys.argv) > 1 else None, sys.argv[2] if len(sys.argv) > 2 else "official")
     train, dev, test = splits["train"], splits["dev"], splits["test"]
     for name, df in splits.items():
         print(f"{name:5s} rows {len(df):7d}  unique reports {df['source_key'].nunique():6d}")
