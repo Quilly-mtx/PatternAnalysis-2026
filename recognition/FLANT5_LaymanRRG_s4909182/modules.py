@@ -4,6 +4,9 @@ Model components: FLAN-T5 backbone and LoRA adapter layers.
 LoRA (Hu et al., ICLR 2022) freezes a pretrained weight W and learns a low-rank
 update, so the layer computes  W x + (alpha / r) * B A x  with A of shape
 (r, d_in) and B of shape (d_out, r). Only A and B receive gradients.
+
+Author: Weixiang Han (s4909182), COMP3710 Pattern Recognition Report, 2026.
+AI assistance is disclosed in README.md (Artificial Intelligence Usage Disclosure).
 """
 import math
 

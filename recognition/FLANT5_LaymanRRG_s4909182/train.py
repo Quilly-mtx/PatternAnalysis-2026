@@ -13,6 +13,9 @@ metrics, curves and resource usage to --out_dir.
 tests the final checkpoint, because that split has no held-out dev set.
 --split controlled trains on the de-duplicated split and tests the checkpoint
 with the best ROUGE-Lsum on its dev split.
+
+Author: Weixiang Han (s4909182), COMP3710 Pattern Recognition Report, 2026.
+AI assistance is disclosed in README.md (Artificial Intelligence Usage Disclosure).
 """
 import argparse
 import json

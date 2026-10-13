@@ -1,6 +1,9 @@
 """
 Shared helpers: seeding, device and autocast choice, ROUGE scoring, batched
 generation, checkpoint I/O and training curves.
+
+Author: Weixiang Han (s4909182), COMP3710 Pattern Recognition Report, 2026.
+AI assistance is disclosed in README.md (Artificial Intelligence Usage Disclosure).
 """
 import random
 import re

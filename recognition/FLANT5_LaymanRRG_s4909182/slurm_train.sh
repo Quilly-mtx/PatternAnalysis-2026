@@ -7,6 +7,8 @@
 #SBATCH --time=08:00:00
 #SBATCH --output=slurm-%x-%j.out
 
+# Author: Weixiang Han (s4909182), COMP3710 Pattern Recognition Report, 2026.
+#
 # Run train.py on one Rangpur A100. Submit from this folder:
 #
 #   sbatch --job-name=zero_shot --time=02:00:00 slurm_train.sh zero_shot runs/zero_shot

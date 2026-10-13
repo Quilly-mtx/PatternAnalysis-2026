@@ -9,6 +9,9 @@ For each example the script prints the report, the reference summary (when
 there is one), the generated summary and its ROUGE-Lsum, and saves a heatmap of
 the decoder's cross-attention: which words of the report the model was reading
 while it wrote each word of the summary.
+
+Author: Weixiang Han (s4909182), COMP3710 Pattern Recognition Report, 2026.
+AI assistance is disclosed in README.md (Artificial Intelligence Usage Disclosure).
 """
 import argparse
 import os

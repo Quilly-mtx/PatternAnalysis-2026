@@ -5,6 +5,9 @@ The official test split has no reference summaries, so the official validation
 split is always the held-out test set. Two ways of preparing the training data
 are provided: the official train split exactly as released, and a
 leakage-controlled variant with duplicates removed and a dev split carved out.
+
+Author: Weixiang Han (s4909182), COMP3710 Pattern Recognition Report, 2026.
+AI assistance is disclosed in README.md (Artificial Intelligence Usage Disclosure).
 """
 import hashlib
 import re
