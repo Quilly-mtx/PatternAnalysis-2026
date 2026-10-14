@@ -14,6 +14,7 @@ Author: Weixiang Han (s4909182), COMP3710 Pattern Recognition Report, 2026.
 AI assistance is disclosed in README.md (Artificial Intelligence Usage Disclosure).
 """
 import argparse
+import json
 import os
 import textwrap
 
@@ -51,7 +52,28 @@ def parse_args():
     args = parser.parse_args()
     if args.mode != "zero_shot" and not args.checkpoint:
         parser.error("--checkpoint is required for lora and full modes")
+    if args.mode == "lora":
+        check_lora_config(parser, args)
     return args
+
+
+def check_lora_config(parser, args):
+    """
+    Stop if --rank or --alpha differ from the values the checkpoint was trained with.
+
+    alpha is not stored in the checkpoint, so a wrong value loads without error and
+    silently rescales every update by alpha / r. train.py writes config.json next
+    to best.pt, so the training values are read from there.
+    """
+    path = os.path.join(os.path.dirname(args.checkpoint), "config.json")
+    if not os.path.exists(path):
+        print(f"warning: {path} not found, cannot check --rank and --alpha against training", flush=True)
+        return
+    with open(path) as f:
+        config = json.load(f)
+    if (config["rank"], float(config["alpha"])) != (args.rank, args.alpha):
+        parser.error(f"checkpoint was trained with --rank {config['rank']} --alpha {config['alpha']}, "
+                     f"got --rank {args.rank} --alpha {args.alpha}")
 
 
 def group_pieces(tokens):
