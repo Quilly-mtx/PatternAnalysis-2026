@@ -103,6 +103,11 @@ def load_checkpoint(model, mode, path):
     result = model.load_state_dict(state, strict=(mode != "lora"))
     if result.unexpected_keys:
         raise RuntimeError(f"checkpoint has keys the model does not: {result.unexpected_keys[:3]}")
+    # strict=False lets the frozen pretrained weights be absent, but every adapter must be loaded:
+    # a missing one would leave its layer at B = 0, silently back to the untuned model.
+    missing = [key for key in result.missing_keys if "lora_" in key]
+    if missing:
+        raise RuntimeError(f"checkpoint is missing {len(missing)} adapter tensors, e.g. {missing[:3]}")
 
 
 def plot_history(train_curve, history, path):
