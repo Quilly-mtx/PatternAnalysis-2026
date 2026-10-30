@@ -1,0 +1,14 @@
+# Exact package versions from the Rangpur environment (Python 3.11.15; torch 2.13.0+cu130).
+# Author: Weixiang Han (s4909182), COMP3710 Pattern Recognition Report, 2026.
+# AI assistance is disclosed in README.md (Artificial Intelligence Usage Disclosure).
+torch==2.13.0
+transformers==5.18.0
+sentencepiece==0.2.2
+tokenizers==0.23.2
+pandas==3.0.6
+pyarrow==25.0.1
+numpy==2.4.6
+rouge-score==0.1.2
+nltk==3.10.3
+matplotlib==3.11.2
+textstat==0.7.13
