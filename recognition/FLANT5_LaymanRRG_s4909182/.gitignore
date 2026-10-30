@@ -23,3 +23,10 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .venv/
+
+# Script outputs
+predict_outputs/
+audit_outputs/
+
+# macOS
+.DS_Store
